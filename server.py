@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app):
     await get_pool()          # Inicializa o pool na startup
     yield
     await close_pool()        # Fecha na shutdown

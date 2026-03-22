@@ -22,7 +22,7 @@ def register_schema_tools(mcp: FastMCP):
                 table_schema,
                 table_name,
                 pg_size_pretty(pg_total_relation_size(quote_ident(table_schema)||'.'||quote_ident(table_name))) AS size,
-                (SELECT reltuples::bigint FROM pg_class WHERE relname = table_name) AS row_estimate
+                (SELECT reltuples::bigint FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = table_name AND n.nspname = table_schema) AS row_estimate
             FROM information_schema.tables
             WHERE table_type = 'BASE TABLE'
               AND table_schema NOT IN ('pg_catalog', 'information_schema')
