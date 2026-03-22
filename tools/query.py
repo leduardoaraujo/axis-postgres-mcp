@@ -14,7 +14,7 @@ class ExecuteQueryInput(BaseModel):
 
     sql: str = Field(
         ...,
-        description="SQL SELECT to execute. Read-only — INSERT/UPDATE/DELETE are blocked.",
+        description="SQL SELECT to execute. Enforced read-only at the DB role level.",
         min_length=1,
         max_length=10_000,
     )
@@ -44,8 +44,8 @@ def register_query_tools(mcp: FastMCP):
     async def pg_execute_query(params: ExecuteQueryInput) -> str:
         """Executes a SELECT query on PostgreSQL and returns the results.
 
-        Only read queries (SELECT) are allowed.
-        Use pg_list_tables and pg_describe_table to explore the schema before querying.
+        Only read queries (SELECT) are allowed. Read-only enforcement is done
+        at the database level — connect with a role that has no write privileges.
 
         Args:
             params.sql: Valid SELECT query
@@ -55,20 +55,14 @@ def register_query_tools(mcp: FastMCP):
         Returns:
             str: Results formatted as a Markdown table or JSON
         """
-        sql = params.sql.strip()
-
-        # Basic security — block DML/DDL
-        forbidden = ("insert", "update", "delete", "drop", "create", "alter", "truncate")
-        if any(sql.lower().startswith(kw) for kw in forbidden):
-            return "Error: Only SELECT queries are allowed in this tool."
-
-   
-        if "limit" not in sql.lower():
-            sql = f"{sql} LIMIT {params.limit}"
+        # Wrap in a subquery to enforce the row cap regardless of any LIMIT
+        # already present in the user's SQL.
+        sql = f"SELECT * FROM ({params.sql.strip()}) AS _q LIMIT {params.limit}"
 
         try:
             pool = await get_pool()
             async with pool.acquire() as conn:
+                await conn.execute("SET TRANSACTION READ ONLY")
                 records = await conn.fetch(sql)
 
             data = records_to_dict(records)
