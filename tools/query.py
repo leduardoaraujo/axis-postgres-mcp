@@ -1,9 +1,11 @@
-import json
+import logging
 from pydantic import BaseModel, Field, ConfigDict
 from mcp.server.fastmcp import FastMCP
 from core.connection import get_pool
 from core.formatters import records_to_dict, format_as_markdown_table, format_as_json
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 class ResponseFormat(str, Enum):
     MARKDOWN = "markdown"
@@ -62,16 +64,17 @@ def register_query_tools(mcp: FastMCP):
         try:
             pool = await get_pool()
             async with pool.acquire() as conn:
-                await conn.execute("SET TRANSACTION READ ONLY")
-                records = await conn.fetch(sql)
-
-            data = records_to_dict(records)
-
-            if params.format == ResponseFormat.JSON:
-                return format_as_json(data)
-
-            result = format_as_markdown_table(data)
-            return f"**{len(data)} row(s) returned**\n\n{result}"
-
+                async with conn.transaction():
+                    await conn.execute("SET TRANSACTION READ ONLY")
+                    records = await conn.fetch(sql)
         except Exception as e:
-            return f"Error executing query: {e}"
+            logger.error("pg_execute_query failed: %s", e)
+            raise
+
+        data = records_to_dict(records)
+
+        if params.format == ResponseFormat.JSON:
+            return format_as_json(data)
+
+        result = format_as_markdown_table(data)
+        return f"**{len(data)} row(s) returned**\n\n{result}"
