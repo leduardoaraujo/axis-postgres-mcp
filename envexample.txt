@@ -1,1 +1,0 @@
-POSTGRES_DSN=postgresql://user:password@localhost:5432/meu_banco
