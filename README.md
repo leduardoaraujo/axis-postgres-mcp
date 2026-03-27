@@ -1,4 +1,4 @@
-# axis-postgres-mcp
+# postgres-mcp
 
 PostgreSQL MCP server focused on read-only queries and schema inspection, with support for up to 3 named database connections.
 
