@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axis-postgres-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "Read-only PostgreSQL MCP server with schema inspection tools."
 requires-python = ">=3.11"
 dependencies = [
